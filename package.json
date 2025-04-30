@@ -5,13 +5,9 @@
   "license": "MIT",
   "main": "src/index.ts",
   "scripts": {
-    "start": "node dist/index",
+    "start": "yarn add @distube/ytdl-core && node dist/index",
     "dev": "nodemon src/index.ts",
-    "schema": "prisma db push",
-    "studio": "prisma studio",
-    "seed": "prisma db seed",
-    "build-modules": "prisma generate",
-    "build-files": "tsc"
+    "build": "tsc"
   },
   "dependencies": {
     "@prisma/client": "^4.15.0",
