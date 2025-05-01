@@ -2,7 +2,6 @@ FROM node:22-alpine as pre-yarn
 RUN apk add --no-cache ffmpeg
 WORKDIR /app
 COPY package.json yarn.lock ./
-COPY prisma ./prisma
 
 FROM pre-yarn as pre-install
 COPY .yarnrc.yml ./
