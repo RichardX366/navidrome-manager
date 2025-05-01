@@ -10,8 +10,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.ndyt.rule=Host(`ndyt.richardxiong.com`)
     environment:
-      - DATABASE_URL=$DATABASE_URL
-      - JWT_SECRET=$JWT_SECRET
+      - DEEPL_KEY=$DEEPL_KEY
 
 networks:
   default:
