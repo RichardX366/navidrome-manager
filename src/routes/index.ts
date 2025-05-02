@@ -1,5 +1,4 @@
 import express, { Router } from 'express';
-import { Downloader } from 'ytdl-mp3';
 import { Promise as id3 } from 'node-id3';
 import deepL from 'deepl';
 import {
@@ -18,10 +17,6 @@ const baseRouter = Router();
 
 baseRouter.use(express.static('public'));
 
-const downloader = new Downloader({
-  outputDir: '/temp/music',
-});
-
 const translate = async (text: string) => {
   const { data } = await deepL({
     free_api: true,
@@ -34,7 +29,7 @@ const translate = async (text: string) => {
 
 baseRouter.get('/info/:id', async (req, res) => {
   const { id } = req.params;
-  if (!id) res.status(404);
+  if (!ytdl.validateURL(id || '')) return res.status(404);
 
   const song = await ytdl.getInfo(id);
 
@@ -50,7 +45,19 @@ baseRouter.get('/info/:id', async (req, res) => {
     ),
   ]);
 
-  res.json({ artist, title });
+  let thumbnail = {
+    url: '',
+    width: 0,
+    height: 0,
+  };
+
+  song.videoDetails.thumbnails.forEach((thumb) => {
+    if (thumb.width > thumbnail.width && thumb.url.includes('.jpg')) {
+      thumbnail = thumb;
+    }
+  });
+
+  res.json({ artist, title, thumbnail: thumbnail.url.split('?')[0] });
 });
 
 const downloadImage = async (url: string, path: string) => {
@@ -68,9 +75,7 @@ const downloadImage = async (url: string, path: string) => {
 
 baseRouter.get('/download/:id', async (req, res) => {
   const { id } = req.params;
-  if (!id) res.status(404);
-
-  const file = await downloader.downloadSong(id);
+  if (!ytdl.validateURL(id || '')) return res.status(404);
 });
 
 export default baseRouter;

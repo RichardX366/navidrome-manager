@@ -8,7 +8,7 @@ import baseRouter from './routes';
 
 app.use(baseRouter);
 
-app.use(handleError({ prisma: true }));
+app.use(handleError());
 
 app.listen(process.env.PORT || 3005, () =>
   console.log(
