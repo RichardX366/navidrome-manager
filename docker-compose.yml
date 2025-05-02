@@ -11,6 +11,7 @@ services:
       - traefik.http.routers.ndyt.rule=Host(`ndyt.richardxiong.com`)
     environment:
       - DEEPL_KEY=$DEEPL_KEY
+      - ADMIN_KEY=$ADMIN_KEY
 
 networks:
   default:

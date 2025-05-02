@@ -1,0 +1,44 @@
+body {
+  background-color: #112;
+  color: white;
+  font-family: Arial;
+  text-align: center;
+}
+
+input {
+  background-color: #223;
+  border: #444 solid 2px;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 16px;
+  color: white;
+  outline: none;
+  width: 800px;
+}
+
+h1 {
+  font-size: 48px;
+  font-weight: 400;
+  margin-bottom: 0px;
+}
+
+input:active,
+input:focus {
+  border: white solid 2px;
+}
+
+button {
+  background-color: #003366;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-left: 8px;
+}
+
+button:hover {
+  background-color: #0055aa;
+}
