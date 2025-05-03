@@ -1,20 +1,28 @@
 version: '3.9'
 services:
-  ndyt:
-    container_name: ndyt
-    image: 'registry.richardxiong.com/ndyt:latest'
+  navidrome:
+    container_name: navidrome
+    image: 'deluan/navidrome:latest'
+    restart: unless-stopped
+    ports:
+      - '4533'
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.navidrome.rule=Host(`navidrome.richardxiong.com`)
+    volumes:
+      - 'data:/data'
+      - 'music:/music:ro'
+
+  navidrome-manager:
+    container_name: navidrome-manager
+    image: 'registry.richardxiong.com/navidrome-manager:latest'
     restart: unless-stopped
     ports:
       - '3005'
     labels:
       - traefik.enable=true
-      - traefik.http.routers.ndyt.rule=Host(`ndyt.richardxiong.com`)
+      - traefik.http.routers.navidrome-manager.rule=Host(`navidrome-manager.richardxiong.com`)
     environment:
-      - DEEPL_KEY=$DEEPL_KEY
       - ADMIN_KEY=$ADMIN_KEY
-      - COOKIE=$COOKIE
-
-networks:
-  default:
-    name: proxy
-    external: true
+    volumes:
+      - 'music:/music'

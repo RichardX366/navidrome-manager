@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Navidrome YouTube Downloader</title>
-    <link href="style.css" rel="stylesheet" />
+    <title>Navidrome Manager</title>
+    <link href="/style.css" rel="stylesheet" />
     <link
       rel="icon"
       type="image/png"
@@ -11,55 +11,70 @@
     />
   </head>
   <body>
-    <h1>Navidrome YouTube Downloader</h1>
-    <p>
-      Download songs from YouTube onto the Navidrome song directory. Manage the
-      song list <a href="/manage">here</a>.
-    </p>
-    <input placeholder="YouTube Link" id="yt-link" />
-    <button id="fetch">Fetch</button>
-    <button
-      class="red"
-      onclick="if (confirm('Are you sure you want to log out?')) {document.cookie = 'password=; path=/; expires=0;'; window.location.reload();}"
-    >
-      Log out
+    <h1>Navidrome Manager</h1>
+    <p>Manage your song list.</p>
+
+    <input type="file" id="file" accept="audio/mp3" />
+    <button style="padding: 0px">
+      <label for="file" style="padding: 12px; display: block">Add Song</label>
     </button>
-    <table id="song" style="display: none">
+
+    <table id="song-list">
       <thead>
         <tr>
-          <th>Thumbnail</th>
-          <th>Details</th>
+          <th width="600px">Song</th>
+          <th width="200px">Artist</th>
+          <th colspan="2">Action</th>
         </tr>
       </thead>
-      <tbody>
-        <tr>
-          <td rowspan="4">
-            <input type="file" id="thumbnail" accept="image/*" />
-            <label for="thumbnail">
-              <img alt="thumbnail" />
-            </label>
-          </td>
-          <td>
-            <input placeholder="Title" id="title" />
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <input placeholder="Artist" id="artist" />
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <input placeholder="Album" id="album" />
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <button>Download</button>
-          </td>
-        </tr>
-      </tbody>
+      <tbody></tbody>
     </table>
+
+    <dialog id="modify">
+      <table id="song">
+        <thead>
+          <tr>
+            <th>Thumbnail</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="4">
+              <input type="file" id="thumbnail" accept="image/*" />
+              <label for="thumbnail">
+                <img alt="thumbnail" />
+              </label>
+            </td>
+            <td>
+              <input placeholder="Title" id="title" />
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <input placeholder="Artist" id="artist" />
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <input placeholder="Album" id="album" />
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <button id="confirm-modify">Update</button>
+              <button
+                class="red"
+                onclick="document.querySelector('dialog').close();"
+              >
+                Cancel
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </dialog>
+
     <script src="script.js"></script>
   </body>
 </html>

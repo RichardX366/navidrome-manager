@@ -1,11 +1,27 @@
 import express, { Router } from 'express';
 import { Promise as id3 } from 'node-id3';
-import deepL from 'deepl';
 import { readdir, access, unlink, rename } from 'fs/promises';
-import ytdl from '@nuclearplayer/ytdl-core';
-import ffmpeg from 'fluent-ffmpeg';
 import multer from 'multer';
 import { fileTypeFromBuffer } from 'file-type';
+import { exit } from 'process';
+
+const cleanFilename = (filename: string) => {
+  return filename
+    .replaceAll('/', '')
+    .replaceAll('\\', '')
+    .replaceAll(':', '')
+    .replaceAll('*', '')
+    .replaceAll('?', '')
+    .replaceAll('"', '')
+    .replaceAll('<', '')
+    .replaceAll('>', '')
+    .replaceAll('(', '')
+    .replaceAll(')', '')
+    .replaceAll('|', '')
+    .replaceAll('.', '_')
+    .replaceAll(' ', '_')
+    .replaceAll('-', '_');
+};
 
 const baseRouter = Router();
 
@@ -27,160 +43,6 @@ baseRouter.use((req, res, next) => {
 });
 
 baseRouter.use(express.static('public'));
-
-const translate = async (text: string) => {
-  const { data } = await deepL({
-    free_api: true,
-    text,
-    target_lang: 'EN',
-    auth_key: process.env.DEEPL_KEY as string,
-  });
-  return data.translations[0].text;
-};
-
-baseRouter.get('/info/:id', async (req, res) => {
-  const { id } = req.params;
-  if (!id || (!ytdl.validateID(id) && !ytdl.validateURL(id))) {
-    return res.status(404);
-  }
-
-  const song = await ytdl.getInfo(id, {
-    requestOptions: {
-      headers: {
-        cookie: process.env.COOKIE,
-      },
-    },
-  });
-
-  const [artist, title] = await Promise.all([
-    translate(song.videoDetails.author.name),
-    translate(song.videoDetails.title).then((title) =>
-      title
-        .split(' ')
-        .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ')
-        .replaceAll('/', '')
-        .replaceAll('\\', ''),
-    ),
-  ]);
-
-  let thumbnail = {
-    url: '',
-    width: 0,
-    height: 0,
-  };
-
-  song.videoDetails.thumbnails.forEach((thumb) => {
-    if (thumb.width > thumbnail.width) {
-      thumbnail = thumb;
-    }
-  });
-
-  res.json({
-    artist,
-    title,
-    thumbnail: thumbnail.url.split('?')[0],
-    loudness: song.player_response.playerConfig.audioConfig.loudnessDb,
-  });
-});
-
-const cleanFilename = (filename: string) => {
-  return filename
-    .replaceAll('/', '')
-    .replaceAll('\\', '')
-    .replaceAll(':', '')
-    .replaceAll('*', '')
-    .replaceAll('?', '')
-    .replaceAll('"', '')
-    .replaceAll('<', '')
-    .replaceAll('>', '')
-    .replaceAll('(', '')
-    .replaceAll(')', '')
-    .replaceAll('|', '')
-    .replaceAll('.', '_')
-    .replaceAll(' ', '_')
-    .replaceAll('-', '_');
-};
-
-baseRouter.post(
-  '/download/:id',
-  multer({
-    storage: multer.diskStorage({}),
-    fileFilter(req, file, callback) {
-      const { id } = req.params;
-      if (!id || (!ytdl.validateID(id) && !ytdl.validateURL(id))) {
-        return callback(new Error('Invalid video ID'));
-      }
-
-      if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg') {
-        callback(null, true);
-      } else {
-        callback(new Error('Invalid file type'));
-      }
-    },
-  }).single('thumbnail'),
-  async (req, res) => {
-    const { id } = req.params;
-    if (!id || (!ytdl.validateID(id) && !ytdl.validateURL(id))) {
-      return res.status(404);
-    }
-
-    if (!req.body.title) {
-      return res.status(400).send('Title is required');
-    }
-
-    if (!req.body.loudness) {
-      return res.status(400).send('Loudness is required');
-    }
-
-    if (!req.file) {
-      return res.status(400).send('Thumbnail file is required');
-    }
-
-    const filename = `/music/${cleanFilename(req.body.title)}-${
-      cleanFilename(req.body.artist) || 'Unknown'
-    }.mp3`;
-
-    const stream = ytdl(id, {
-      quality: 'highestaudio',
-      filter: 'audioonly',
-      requestOptions: {
-        headers: {
-          cookie: process.env.COOKIE,
-        },
-      },
-    });
-
-    await new Promise<void>((resolve, reject) =>
-      ffmpeg(stream)
-        .audioCodec('libmp3lame')
-        .audioBitrate(192)
-        .audioFilters([
-          {
-            filter: 'volume',
-            options: 8 - req.body.loudness + 'dB',
-          },
-        ])
-        .save(filename)
-        .on('end', () => resolve())
-        .on('error', (err) => reject(err)),
-    );
-
-    await id3.write(
-      {
-        title: req.body.title,
-        artist: req.body.artist,
-        album: req.body.album,
-        image: req.file.path,
-      },
-      filename,
-    );
-
-    await unlink(req.file.path);
-
-    res.send('success');
-  },
-);
 
 baseRouter.get('/list', async (req, res) => {
   res.json(await readdir('/music'));
@@ -276,11 +138,53 @@ baseRouter.put(
       await unlink(req.file.path);
     }
 
-    const newFilename = `${cleanFilename(req.body.title)}-${
-      cleanFilename(req.body.artist) || 'Unknown'
-    }.mp3`;
+    const newFilename = `${cleanFilename(
+      req.body.title || 'Unknown',
+    )}-${cleanFilename(req.body.artist || 'Unknown')}.mp3`;
 
     await rename(`/music/${filename}`, '/music/' + newFilename);
+
+    res.send(newFilename);
+  },
+);
+
+baseRouter.post(
+  '/upload',
+  multer({
+    storage: multer.diskStorage({}),
+    async fileFilter(req, file, callback) {
+      if (
+        !file.originalname ||
+        file.originalname.includes('/') ||
+        file.originalname.includes('\\')
+      ) {
+        return callback(new Error('Bad filename'));
+      }
+
+      try {
+        await access(`/music/${file.originalname}`);
+      } catch (err) {
+        if (file.mimetype === 'audio/mpeg') {
+          return callback(null, true);
+        } else {
+          return callback(new Error('Invalid file type'));
+        }
+      }
+
+      return callback(new Error('File already exists'));
+    },
+  }).single('song'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).send('File is required');
+    }
+
+    const details = await id3.read(req.file.path);
+    const newFilename = `${cleanFilename(
+      details.title || 'Unknown',
+    )}-${cleanFilename(details.artist || 'Unknown')}.mp3`;
+
+    await rename(req.file.path, '/music/' + newFilename);
 
     res.send(newFilename);
   },

@@ -1,33 +1,75 @@
-const linkInput = document.querySelector('#yt-link');
-const fetchButton = document.querySelector('#fetch');
 const table = document.querySelector('table');
+const modifyDialog = document.querySelector('#modify');
 const thumbnailImage = document.querySelector('img');
-thumbnailImage.crossOrigin = 'anonymous';
 const thumbnailInput = document.querySelector('#thumbnail');
 const titleInput = document.querySelector('#title');
 const artistInput = document.querySelector('#artist');
 const albumInput = document.querySelector('#album');
-const downloadButton = document.querySelector('table button');
-let loudness = 0;
+const confirmModifyButton = document.querySelector('#confirm-modify');
+const songInput = document.querySelector('#file');
 
-linkInput.focus();
+let currentSong = '';
+let originalThumbnail = '';
 
-fetchButton.onclick = async () => {
-  const videoLink = linkInput.value;
-  if (!videoLink) return;
+const load = async () => {
+  const data = await fetch('/list').then((res) => res.json());
+  data.forEach((song) => {
+    const row = document.createElement('tr');
+    row.setAttribute('data-song', song);
+    const titleCell = document.createElement('td');
+    const artistCell = document.createElement('td');
+    const deleteCell = document.createElement('td');
+    const modifyCell = document.createElement('td');
 
-  const response = await fetch('/info/' + encodeURIComponent(videoLink)).then(
-    (res) => res.json(),
-  );
+    titleCell.textContent = song.split('-')[0].replaceAll('_', ' ');
 
-  thumbnailImage.src = response.thumbnail;
-  titleInput.value = response.title;
-  artistInput.value = response.artist;
-  albumInput.value = '';
-  loudness = response.loudness;
+    artistCell.textContent = song
+      .split('-')[1]
+      .replaceAll('_', ' ')
+      .split('.')[0];
 
-  table.style.display = 'table';
+    const deleteButton = document.createElement('button');
+    deleteButton.textContent = 'Delete';
+    deleteButton.className = 'red';
+    deleteButton.onclick = async () => {
+      if (confirm('Are you sure you want to delete this song?')) {
+        await fetch('/delete/' + encodeURIComponent(song), {
+          method: 'DELETE',
+        });
+        row.remove();
+      }
+    };
+    deleteCell.appendChild(deleteButton);
+
+    const modifyButton = document.createElement('button');
+    modifyButton.textContent = 'Modify';
+    modifyButton.className = 'modify';
+    modifyButton.onclick = async () => {
+      const details = await fetch('/details/' + encodeURIComponent(song)).then(
+        (res) => res.json(),
+      );
+
+      thumbnailImage.src = details.thumbnail;
+      originalThumbnail = details.thumbnail;
+      titleInput.value = details.title;
+      artistInput.value = details.artist;
+      albumInput.value = details.album;
+      currentSong = song;
+
+      modifyDialog.showModal();
+    };
+    modifyCell.appendChild(modifyButton);
+
+    row.appendChild(titleCell);
+    row.appendChild(artistCell);
+    row.appendChild(deleteCell);
+    row.appendChild(modifyCell);
+
+    table.appendChild(row);
+  });
 };
+
+load();
 
 thumbnailInput.onchange = () => {
   const file = thumbnailInput.files[0];
@@ -37,13 +79,18 @@ thumbnailInput.onchange = () => {
       thumbnailImage.src = reader.result;
     };
     reader.readAsDataURL(file);
+  } else {
+    thumbnailImage.src = originalThumbnail;
   }
 };
 
-downloadButton.onclick = async () => {
-  if (confirm('Are you sure you want to download this song?')) {
-    downloadButton.disabled = true;
+confirmModifyButton.onclick = async () => {
+  if (!confirm('Are you sure you want to modify this song?')) return;
 
+  confirmModifyButton.disabled = true;
+
+  const formData = new FormData();
+  if (thumbnailInput.files.length) {
     const canvas = new OffscreenCanvas(300, 300);
     const ctx = canvas.getContext('2d');
     const cropSize = Math.min(
@@ -71,30 +118,113 @@ downloadButton.onclick = async () => {
       });
     });
 
-    const formData = new FormData();
+    formData.append('thumbnail', blob);
+  } else {
+    const blob = await fetch(originalThumbnail).then((res) => res.blob());
     formData.append('thumbnail', blob, 'thumbnail.jpg');
-    formData.append('title', titleInput.value);
-    formData.append('artist', artistInput.value);
-    formData.append('album', albumInput.value);
-    formData.append('loudness', loudness);
+  }
+  formData.append('title', titleInput.value);
+  formData.append('artist', artistInput.value);
+  formData.append('album', albumInput.value);
 
-    const response = await fetch(
-      '/download/' + encodeURIComponent(linkInput.value),
-      {
-        method: 'POST',
-        body: formData,
-      },
-    );
+  const newSongName = await fetch(
+    '/update/' + encodeURIComponent(currentSong),
+    {
+      method: 'PUT',
+      body: formData,
+    },
+  ).then((res) => res.text());
 
-    if (response.status === 200) {
-      table.style.display = 'none';
-      alert('Download successful!');
+  const row = document.querySelector(`tr[data-song="${currentSong}"]`);
+  row.setAttribute('data-song', newSongName);
+  row.querySelector('td').textContent = titleInput.value;
+  row.querySelector('td:nth-child(2)').textContent = artistInput.value;
+  row.querySelector('button').onclick = async () => {
+    if (confirm('Are you sure you want to delete this song?')) {
+      await fetch('/delete/' + encodeURIComponent(newSongName), {
+        method: 'DELETE',
+      });
+      row.remove();
     }
+  };
+  row.querySelector('button.modify').onclick = async () => {
+    const details = await fetch(
+      '/details/' + encodeURIComponent(newSongName),
+    ).then((res) => res.json());
 
-    if (response.status >= 400) {
-      alert('Download failed: ' + (await response.text()));
-    }
+    thumbnailImage.src = details.thumbnail;
+    originalThumbnail = details.thumbnail;
+    titleInput.value = details.title;
+    artistInput.value = details.artist;
+    albumInput.value = details.album;
+    currentSong = newSongName;
 
-    downloadButton.disabled = false;
+    modifyDialog.showModal();
+  };
+
+  modifyDialog.close();
+
+  confirmModifyButton.disabled = false;
+};
+
+songInput.onchange = async () => {
+  const file = songInput.files[0];
+  if (file) {
+    const form = new FormData();
+    form.append('song', file);
+
+    const song = await fetch('/upload', {
+      method: 'POST',
+      body: form,
+    }).then((res) => res.text());
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-song', song);
+    const titleCell = document.createElement('td');
+    const artistCell = document.createElement('td');
+    const deleteCell = document.createElement('td');
+    const modifyCell = document.createElement('td');
+    titleCell.textContent = song.split('-')[0].replaceAll('_', ' ');
+    artistCell.textContent = song
+      .split('-')[1]
+      .replaceAll('_', ' ')
+      .split('.')[0];
+    const deleteButton = document.createElement('button');
+    deleteButton.textContent = 'Delete';
+    deleteButton.className = 'red';
+    deleteButton.onclick = async () => {
+      if (confirm('Are you sure you want to delete this song?')) {
+        await fetch('/delete/' + encodeURIComponent(song), {
+          method: 'DELETE',
+        });
+        tr.remove();
+      }
+    };
+    deleteCell.appendChild(deleteButton);
+    const modifyButton = document.createElement('button');
+    modifyButton.textContent = 'Modify';
+    modifyButton.className = 'modify';
+    modifyButton.onclick = async () => {
+      const details = await fetch('/details/' + encodeURIComponent(song)).then(
+        (res) => res.json(),
+      );
+
+      thumbnailImage.src = details.thumbnail;
+      originalThumbnail = details.thumbnail;
+      titleInput.value = details.title;
+      artistInput.value = details.artist;
+      albumInput.value = details.album;
+      currentSong = song;
+
+      modifyDialog.showModal();
+    };
+    modifyCell.appendChild(modifyButton);
+    tr.appendChild(titleCell);
+    tr.appendChild(artistCell);
+    tr.appendChild(deleteCell);
+    tr.appendChild(modifyCell);
+    table.appendChild(tr);
+    songInput.value = '';
+    songInput.files = null;
   }
 };
