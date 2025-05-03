@@ -71,6 +71,16 @@ baseRouter.get('/details/:filename', async (req, res) => {
   }
 
   const file = await id3.read(`/music/${filename}`);
+
+  if (!file.image) {
+    return res.json({
+      title: file.title,
+      artist: file.artist,
+      album: file.album,
+      thumbnail: '',
+    });
+  }
+
   const image = (file.image as any).imageBuffer;
 
   const thumbnailDataUrl = file.image
