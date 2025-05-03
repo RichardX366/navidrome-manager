@@ -44,7 +44,13 @@ baseRouter.get('/info/:id', async (req, res) => {
     return res.status(404);
   }
 
-  const song = await ytdl.getInfo(id);
+  const song = await ytdl.getInfo(id, {
+    requestOptions: {
+      headers: {
+        cookie: process.env.COOKIE,
+      },
+    },
+  });
 
   const [artist, title] = await Promise.all([
     translate(song.videoDetails.author.name),
@@ -135,7 +141,15 @@ baseRouter.post(
       cleanFilename(req.body.artist) || 'Unknown'
     }.mp3`;
 
-    const stream = ytdl(id, { quality: 'highestaudio', filter: 'audioonly' });
+    const stream = ytdl(id, {
+      quality: 'highestaudio',
+      filter: 'audioonly',
+      requestOptions: {
+        headers: {
+          cookie: process.env.COOKIE,
+        },
+      },
+    });
 
     await new Promise<void>((resolve, reject) =>
       ffmpeg(stream)

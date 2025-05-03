@@ -12,6 +12,7 @@ services:
     environment:
       - DEEPL_KEY=$DEEPL_KEY
       - ADMIN_KEY=$ADMIN_KEY
+      - COOKIE=$COOKIE
 
 networks:
   default:
