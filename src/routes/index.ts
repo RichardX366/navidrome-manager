@@ -160,7 +160,7 @@ baseRouter.put(
 baseRouter.post(
   '/upload',
   multer({
-    storage: multer.diskStorage({}),
+    storage: multer.diskStorage({ destination: '/music' }),
     async fileFilter(req, file, callback) {
       if (
         !file.originalname ||
