@@ -3,10 +3,6 @@
   <head>
     <title>Navidrome YouTube Downloader</title>
     <link href="style.css" rel="stylesheet" />
-    <meta
-      name="description"
-      content="Navidrome Music Server - v0.55.2 (a057a680)"
-    />
     <link
       rel="icon"
       type="image/png"
@@ -16,10 +12,19 @@
   </head>
   <body>
     <h1>Navidrome YouTube Downloader</h1>
-    <p>Download songs from YouTube onto the Navidrome song directory.</p>
+    <p>
+      Download songs from YouTube onto the Navidrome song directory. Manage the
+      song list <a href="/manage">here</a>.
+    </p>
     <input placeholder="YouTube Link" id="yt-link" />
     <button id="fetch">Fetch</button>
-    <table style="display: none">
+    <button
+      class="red"
+      onclick="if (confirm('Are you sure you want to log out?')) {document.cookie = 'password=; path=/; expires=0;'; window.location.reload();}"
+    >
+      Log out
+    </button>
+    <table id="song" style="display: none">
       <thead>
         <tr>
           <th>Thumbnail</th>

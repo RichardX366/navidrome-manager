@@ -10,6 +10,8 @@ const albumInput = document.querySelector('#album');
 const downloadButton = document.querySelector('table button');
 let loudness = 0;
 
+linkInput.focus();
+
 fetchButton.onclick = async () => {
   const videoLink = linkInput.value;
   if (!videoLink) return;
@@ -27,8 +29,21 @@ fetchButton.onclick = async () => {
   table.style.display = 'table';
 };
 
+thumbnailInput.onchange = () => {
+  const file = thumbnailInput.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      thumbnailImage.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
 downloadButton.onclick = async () => {
   if (confirm('Are you sure you want to download this song?')) {
+    downloadButton.disabled = true;
+
     const canvas = new OffscreenCanvas(300, 300);
     const ctx = canvas.getContext('2d');
     const cropSize = Math.min(
@@ -75,5 +90,11 @@ downloadButton.onclick = async () => {
       table.style.display = 'none';
       alert('Download successful!');
     }
+
+    if (response.status >= 400) {
+      alert('Download failed: ' + (await response.text()));
+    }
+
+    downloadButton.disabled = false;
   }
 };

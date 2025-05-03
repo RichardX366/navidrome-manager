@@ -84,6 +84,10 @@ table input:focus {
 }
 
 table button {
+  margin-left: 0px;
+}
+
+#song button {
   margin: -8px;
   width: 724px;
   border-radius: 0px;
@@ -91,4 +95,35 @@ table button {
 
 input[type='file'] {
   display: none;
+}
+
+.red {
+  background-color: #880000;
+}
+
+.red:hover {
+  background-color: #aa0000;
+}
+
+a {
+  color: white;
+}
+
+#song-list button {
+  padding: 8px;
+}
+
+dialog {
+  background-color: #223;
+  border: #444 solid 2px;
+  border-radius: 12px;
+  color: white;
+}
+
+dialog table {
+  margin: 0px;
+}
+
+dialog button {
+  width: 368px !important ;
 }

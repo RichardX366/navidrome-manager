@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Navidrome Authentication</title>
+    <link href="/style.css" rel="stylesheet" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="https://navidrome.richardxiong.com/app/favicon-32x32.png"
+    />
+  </head>
+  <body>
+    <h1>Navidrome Authentication</h1>
+    <p>Please log in.</p>
+    <input placeholder="Password" type="password" />
+    <button>Log In</button>
+
+    <script>
+      const passwordInput = document.querySelector('input[type="password"]');
+      const loginButton = document.querySelector('button');
+
+      passwordInput.focus();
+
+      const setPassword = () => {
+        const expires = new Date();
+        expires.setFullYear(expires.getFullYear() + 1);
+        document.cookie = `password=${encodeURIComponent(
+          passwordInput.value,
+        )}; path=/; expires=${expires.toUTCString()};`;
+      };
+
+      loginButton.addEventListener('click', () => {
+        setPassword();
+        window.location.href = '/';
+      });
+
+      passwordInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          setPassword();
+          window.location.href = '/';
+        }
+      });
+    </script>
+  </body>
+</html>
