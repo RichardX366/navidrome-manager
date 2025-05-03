@@ -1,8 +1,12 @@
-body {
+html {
   background-color: #112;
   color: white;
   font-family: Arial;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 75vh;
 }
 
 input {
@@ -41,4 +45,50 @@ button {
 
 button:hover {
   background-color: #0055aa;
+}
+
+img {
+  width: 160px;
+  height: 160px;
+  margin: auto;
+  object-fit: cover;
+  margin-bottom: -4px;
+}
+
+img:hover {
+  filter: brightness(50%);
+  transition: filter 0.2s ease;
+  cursor: pointer;
+}
+
+table,
+th,
+td {
+  border-collapse: collapse;
+  border: 1px solid white;
+  margin: 24px auto;
+  padding: 8px;
+  border-radius: 12px;
+}
+
+table input {
+  width: 700px;
+  border: none;
+  margin: -8px;
+  border-radius: 0px;
+}
+
+table input:active,
+table input:focus {
+  border: none;
+}
+
+table button {
+  margin: -8px;
+  width: 724px;
+  border-radius: 0px;
+}
+
+input[type='file'] {
+  display: none;
 }

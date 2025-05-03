@@ -1,17 +1,11 @@
 import express, { Router } from 'express';
 import { Promise as id3 } from 'node-id3';
 import deepL from 'deepl';
-import {
-  createWriteStream,
-  unlinkSync,
-  mkdirSync,
-  existsSync,
-  renameSync,
-} from 'fs';
-import { config } from 'dotenv';
-import axios from 'axios';
-import ytdl from '@distube/ytdl-core';
+import {} from 'fs/promises';
+import ytdl from '@nuclearplayer/ytdl-core';
 import ffmpeg from 'fluent-ffmpeg';
+import multer from 'multer';
+import { unlink } from 'fs/promises';
 
 const baseRouter = Router();
 
@@ -22,14 +16,16 @@ const translate = async (text: string) => {
     free_api: true,
     text,
     target_lang: 'EN',
-    auth_key: process.env.KEY as string,
+    auth_key: process.env.DEEPL_KEY as string,
   });
   return data.translations[0].text;
 };
 
 baseRouter.get('/info/:id', async (req, res) => {
   const { id } = req.params;
-  if (!ytdl.validateURL(id || '')) return res.status(404);
+  if (!id || (!ytdl.validateID(id) && !ytdl.validateURL(id))) {
+    return res.status(404);
+  }
 
   const song = await ytdl.getInfo(id);
 
@@ -52,30 +48,105 @@ baseRouter.get('/info/:id', async (req, res) => {
   };
 
   song.videoDetails.thumbnails.forEach((thumb) => {
-    if (thumb.width > thumbnail.width && thumb.url.includes('.jpg')) {
+    if (thumb.width > thumbnail.width) {
       thumbnail = thumb;
     }
   });
 
-  res.json({ artist, title, thumbnail: thumbnail.url.split('?')[0] });
+  res.json({
+    artist,
+    title,
+    thumbnail: thumbnail.url.split('?')[0],
+    loudness: song.player_response.playerConfig.audioConfig.loudnessDb,
+  });
 });
 
-const downloadImage = async (url: string, path: string) => {
-  const { data: response } = (await axios({
-    method: 'GET',
-    url,
-    responseType: 'stream',
-  })) as { data: NodeJS.ReadableStream };
-
-  const stream = createWriteStream(path);
-  response.pipe(stream);
-
-  return new Promise<void>((res) => stream.on('finish', res));
+const cleanFilename = (filename: string) => {
+  return filename
+    .replaceAll('/', '')
+    .replaceAll('\\', '')
+    .replaceAll(':', '')
+    .replaceAll('*', '')
+    .replaceAll('?', '')
+    .replaceAll('"', '')
+    .replaceAll('<', '')
+    .replaceAll('>', '')
+    .replaceAll('(', '')
+    .replaceAll(')', '')
+    .replaceAll('|', '')
+    .replaceAll(' ', '_');
 };
 
-baseRouter.get('/download/:id', async (req, res) => {
-  const { id } = req.params;
-  if (!ytdl.validateURL(id || '')) return res.status(404);
-});
+baseRouter.post(
+  '/download/:id',
+  multer({
+    storage: multer.diskStorage({}),
+    fileFilter(req, file, callback) {
+      const { id } = req.params;
+      if (!id || (!ytdl.validateID(id) && !ytdl.validateURL(id))) {
+        return callback(new Error('Invalid video ID'));
+      }
+
+      if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg') {
+        callback(null, true);
+      } else {
+        callback(new Error('Invalid file type'));
+      }
+    },
+  }).single('thumbnail'),
+  async (req, res) => {
+    const { id } = req.params;
+    if (!id || (!ytdl.validateID(id) && !ytdl.validateURL(id))) {
+      return res.status(404);
+    }
+
+    if (!req.body.title) {
+      return res.status(400).send('Title is required');
+    }
+
+    if (!req.body.loudness) {
+      return res.status(400).send('Loudness is required');
+    }
+
+    if (!req.file) {
+      return res.status(400).send('Thumbnail file is required');
+    }
+
+    const filename = `/music/${cleanFilename(req.body.title)}-${
+      cleanFilename(req.body.artist) || 'Unknown'
+    }.mp3`;
+
+    const stream = ytdl(id, { quality: 'highestaudio', filter: 'audioonly' });
+
+    await new Promise<void>((resolve, reject) =>
+      ffmpeg(stream)
+        .audioCodec('libmp3lame')
+        .audioBitrate(192)
+        .audioFilters([
+          {
+            filter: 'volume',
+            options: 8 - req.body.loudness + 'dB',
+          },
+        ])
+        .save(filename)
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err)),
+    );
+
+    await id3.write(
+      {
+        title: req.body.title,
+        artist: req.body.artist,
+        album: req.body.album,
+        image: req.file.path,
+      },
+      filename,
+    );
+
+    await unlink(req.file.path);
+
+    res.send('success');
+  },
+);
 
 export default baseRouter;
