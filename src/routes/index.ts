@@ -3,7 +3,6 @@ import { Promise as id3 } from 'node-id3';
 import { readdir, access, unlink, rename } from 'fs/promises';
 import multer from 'multer';
 import { fileTypeFromBuffer } from 'file-type';
-import { exit } from 'process';
 
 const cleanFilename = (filename: string) => {
   return filename

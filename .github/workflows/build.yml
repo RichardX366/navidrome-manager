@@ -39,11 +39,11 @@ jobs:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
           load: true
-          tags: registry.richardxiong.com/ndyt:latest
+          tags: registry.richardxiong.com/navidrome-manager:latest
           platforms: linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
       - name: Push
-        run: docker push registry.richardxiong.com/ndyt:latest
+        run: docker push registry.richardxiong.com/navidrome-manager:latest
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
