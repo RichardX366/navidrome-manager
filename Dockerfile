@@ -18,4 +18,5 @@ RUN yarn build
 FROM pre-yarn as main
 COPY --from=prod-install /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/public ./public
 CMD ["yarn", "start"]
